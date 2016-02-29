@@ -201,6 +201,55 @@ The reason for these numbers is because the numbers on Linux for IPv4 and IPv6
 (the `AF_INET` and `AF_INET6` defines) are `2` and `10`. The TCP numbers are
 just the UDP numbers `+ 128`.
 
+# Protocol Packet
+
+A Protocol Packet is a single byte that is the packet kind, and an arbitrary
+payload. These packets can be transported in a number of ways, the most common
+way being over the network using UDP or TCP. The protocol itself does not
+prescribe transport methods, and an implementation is free to implement
+additional transports such as WebRTC, IRC, or pipes.
+
+Length      | Contents
+----------- | --------
+`1`         | `uint8_t` packet kind
+`[0,]`      | Payload
+
+In the remainder of the document, different kinds of Protocol Packet are
+specified with their packet kind and payload. The packet kind is not repeated
+in the payload description (TODO: actually it mostly is, but later it won't).
+
+Inside Protocol Packets payload, other packet types can specify additional
+packet kinds. E.g. inside a Crypto Data packet (`0x1b`), the
+[Messenger](#messenger) module defines its protocols for messaging, file
+transfers, etc. Top level Protocol Packets are themselves not encrypted, though
+their payload may be.
+
+The following is an exhaustive list of top level packet kind names and their
+number. Their payload is specified in dedicated sections.
+
+Byte value | Packet Kind
+---------- | -----------
+`0x00`     | Ping Request
+`0x01`     | Ping Response
+`0x02`     | Nodes Request
+`0x04`     | Nodes Response
+`0x18`     | Cookie Request
+`0x19`     | Cookie Response
+`0x1a`     | Crypto Handshake
+`0x1b`     | Crypto Data
+`0x20`     | Crypto
+`0x21`     | LAN Discovery
+`0x80`     | Onion Request 0
+`0x81`     | Onion Request 1
+`0x82`     | Onion Request 2
+`0x83`     | Announce Request
+`0x84`     | Announce Response
+`0x85`     | Onion Data Request
+`0x86`     | Onion Data Response
+`0x8c`     | Onion Response 3
+`0x8d`     | Onion Response 2
+`0x8e`     | Onion Response 1
+
 # DHT
 
 The DHT is a self-organizing swarm of all peers in the Tox network. This module
@@ -622,7 +671,7 @@ say that this peer has been found.
 
 LAN discovery is how Tox handles and makes everything work well on LAN.
 
-# Messenger.txt
+# Messenger
 
 Messenger is the module at the top of all the other modules. It sits on top of
 `friend_connection` in the hierarchy of toxcore.
