@@ -3713,3 +3713,163 @@ that was stored and it is removed from the array.
 
 Ping array is used in many places in toxcore to efficiently keep track of sent
 packets.
+
+# State Format
+
+The reference Tox implementation uses a custom binary format to save the state
+of a Tox client between restarts. This format is far from perfect and will be
+replaced eventually. For the sake of maintaining compatibility down the road,
+it is documented here.
+
+The binary encoding of all integer types in the state format is a fixed-width
+byte sequence with the integer encoded in Little Endian.
+
+Length | Contents
+------ | --------
+`4`    | Zeroes
+`4`    | `uint32_t` (0x15ED1B1F)
+`?`    | List of sections
+
+## Sections
+
+The core of the state format consists of a list of sections. Every section has
+its type and length specified at the beginning. In some cases, a section only
+contains one item and thus takes up the entire length of the section. This is
+denoted with '?'.
+
+Length   | Contents
+-------- | --------
+`4`      | `uint32_t` Length of this section
+`2`      | `uint16_t` Section type
+`2`      | `uint16_t` (0x01CE)
+`?`      | Section
+
+Section types:
+
+Name          | Value
+------------- | -----
+NospamKeys    | 1
+DHT           | 2
+Friends       | 3
+Name          | 4
+StatusMessage | 5
+Status        | 6
+TcpRelays     | 10
+PathNodes     | 11
+EOF           | 255
+
+Not every section listed above is required to be present in order to restore
+from a state file. Only NospamKeys is required.
+
+### Nospam and Keys
+
+Length | Contents
+------ | --------
+`4`    | `uint32_t` Nospam
+`32`   | Long term public key
+`32`   | Long term secret key
+
+### DHT
+
+This section contains a list of DHT-related sections.
+
+Length   | Contents
+-------- | --------
+`4`      | `uint32_t` (0x159000D)
+`?`      | List of DHT sections
+
+#### Sections
+
+Every DHT section has the following structure:
+
+Length   | Contents
+-------- | --------
+`4`      | `uint32_t` Length of this section
+`2`      | `uint16_t` DHT section type
+`2`      | `uint16_t` (0x11CE)
+`?`      | DHT section
+
+DHT section types:
+
+Name  | Value | Type
+----- | ----- | ----------
+Nodes | 4     | `uint16_t`
+
+##### Nodes
+
+This section contains a list of nodes. These nodes are used to quickly reconnect
+to the DHT after a Tox client is restarted.
+
+Length   | Contents
+-------- | --------
+`?`      | List of nodes
+
+The structure of a node is the same as `Node Info`.
+
+### Friends
+
+This section contains a list of friends. A friend can either be a peer we've
+sent a friend request to or a peer we've accepted a friend request from.
+
+Length   | Contents
+-------- | --------
+`?`      | List of friends
+
+Friend:
+
+Length | Contents
+------ | --------
+`1`    | `uint8_t` Status (0 = Not a friend, 1 = Friend added, 2 = Friend request sent, 3 = Confirmed friend, 4 = Friend online)
+`32`   | Long term public key
+`1024` | Friend request message as a UTF-8 encoded string
+`2`    | `uint16_t` Size of the friend request message
+`128`  | Name as a UTF-8 encoded string
+`2`    | `uint16_t` Size of the name
+`1007` | Status message as a UTF-8 encoded string
+`2`    | `uint16_t` Size of the status message
+`1`    | `uint8_t` User status (see also: `USERSTATUS`)
+`4`    | `uint32_t` Nospam (only used for sending a friend request)
+`8`    | `uint64_t` Last seen time
+
+### Name
+
+Length | Contents
+------ | --------
+`?`    | Name as a UTF-8 encoded string
+
+### Status Message
+
+Length | Contents
+------ | --------
+`?`    | Status message as a UTF-8 encoded string
+
+### Status
+
+Length | Contents
+------ | --------
+`1`    | `uint8_t` User status (see also: `USERSTATUS`)
+
+### Tcp Relays
+
+This section contains a list of TCP relays.
+
+Length   | Contents
+-------- | --------
+`?`      | List of TCP relays
+
+The structure of a TCP relay is the same as `Node Info`.
+
+### Path Nodes
+
+This section contains a list of path nodes used for onion routing.
+
+Length   | Contents
+-------- | --------
+`?`      | List of path nodes
+
+The structure of a path node is the same as `Node Info`.
+
+### EOF
+
+This section indicates the end of the state file. This section doesn't have any
+content and thus it's length is 0.
